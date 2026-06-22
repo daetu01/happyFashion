@@ -1,12 +1,15 @@
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { AuraProvider } from "./lib/AuraContext";
+import { AuthProvider } from "./lib/AuthContext";
 import BackgroundFX from "./components/BackgroundFX";
 import Landing from "./pages/Landing";
 import Upload from "./pages/Upload";
 import Analysis from "./pages/Analysis";
 import Results from "./pages/Results";
 import Share from "./pages/Share";
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -26,6 +29,8 @@ function AnimatedRoutes() {
           <Route path="/analysis" element={<Analysis />} />
           <Route path="/results" element={<Results />} />
           <Route path="/share" element={<Share />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
         </Routes>
       </motion.div>
     </AnimatePresence>
@@ -35,10 +40,12 @@ function AnimatedRoutes() {
 function App() {
   return (
     <BrowserRouter>
-      <AuraProvider>
-        <BackgroundFX />
-        <AnimatedRoutes />
-      </AuraProvider>
+      <AuthProvider>
+        <AuraProvider>
+          <BackgroundFX />
+          <AnimatedRoutes />
+        </AuraProvider>
+      </AuthProvider>
     </BrowserRouter>
   );
 }

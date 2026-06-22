@@ -1,10 +1,11 @@
 import { motion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
-import { Sparkles, ArrowRight, Star } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { Sparkles, ArrowRight, Star, LogOut } from "lucide-react";
 import Logo from "../components/Logo";
 import Button from "../components/Button";
 import GlassCard from "../components/GlassCard";
 import StatBar from "../components/StatBar";
+import { useAuth } from "../lib/AuthContext";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -26,17 +27,39 @@ const TESTIMONIALS = [
 
 export default function Landing() {
   const navigate = useNavigate();
+  const { isAuthenticated, user, logout } = useAuth();
 
   return (
     <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-5 sm:px-8">
       <header className="flex items-center justify-between py-6">
         <Logo />
-        <a
-          href="#proof"
-          className="hidden text-sm text-white/60 hover:text-white transition-colors sm:inline-block"
-        >
-          2.4M auras generated
-        </a>
+        <div className="flex items-center gap-4">
+          <a
+            href="#proof"
+            className="hidden text-sm text-white/60 hover:text-white transition-colors sm:inline-block"
+          >
+            2.4M auras generated
+          </a>
+          {isAuthenticated ? (
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-white/70">{user?.email}</span>
+              <button
+                onClick={logout}
+                className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-sm text-white/70 hover:text-white hover:border-white/25 transition-colors"
+              >
+                <LogOut size={14} />
+                Log out
+              </button>
+            </div>
+          ) : (
+            <Link
+              to="/login"
+              className="rounded-full border border-white/10 bg-white/[0.03] px-3.5 py-1.5 text-sm text-white/70 hover:text-white hover:border-white/25 transition-colors"
+            >
+              Log in
+            </Link>
+          )}
+        </div>
       </header>
 
       <section className="flex flex-1 flex-col items-center justify-center gap-8 pt-10 pb-20 text-center sm:pt-16">

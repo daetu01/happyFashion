@@ -19,7 +19,7 @@ export default function Analysis() {
 
   useEffect(() => {
     const timers: ReturnType<typeof setTimeout>[] = [];
-    LOADING_MESSAGES.forEach((_, i) => {
+    LOADING_MESSAGES.forEach((_: string, i: number) => {
       timers.push(setTimeout(() => setMessageIndex(i), i * STEP_DURATION));
     });
     timers.push(
