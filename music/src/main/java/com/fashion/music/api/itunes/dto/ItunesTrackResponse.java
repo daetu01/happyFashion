@@ -6,6 +6,8 @@ public record ItunesTrackResponse(
         String collectionName,
         String artworkUrl100,
         String previewUrl,
-        String trackViewUrl
+        String trackViewUrl,
+        String primaryGenreName,
+        String releaseDate
 ) {
 }
