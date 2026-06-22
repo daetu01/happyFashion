@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
-import { Camera, Check, Search, X, Loader2, ArrowRight } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { Camera, Check, Search, X, Loader2, ArrowRight, Heart, Library, Lock } from "lucide-react";
 import PageShell from "../components/PageShell";
 import GlassCard from "../components/GlassCard";
 import Button from "../components/Button";
 import Chip from "../components/Chip";
 import { useAura } from "../lib/AuraContext";
+import { useAuth } from "../lib/AuthContext";
 import { INTEREST_TAGS } from "../lib/data";
-import { searchMusic, type ItunesTrack } from "../lib/musicApi";
+import { searchMusic, getLikedMusics, likeMusic, unlikeMusic, type ItunesTrack } from "../lib/musicApi";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 18 },
@@ -17,6 +18,7 @@ const fadeUp = {
 
 export default function Upload() {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const { photoPreview, setPhotoPreview, selectedTracks, addTrack, removeTrack, interests, toggleInterest } =
     useAura();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -25,6 +27,9 @@ export default function Upload() {
   const [searchResults, setSearchResults] = useState<ItunesTrack[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+
+  const [likedMap, setLikedMap] = useState<Map<number, number>>(new Map());
+  const [likeBusy, setLikeBusy] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     if (!query.trim()) {
@@ -48,6 +53,16 @@ export default function Upload() {
     return () => clearTimeout(timer);
   }, [query]);
 
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setLikedMap(new Map());
+      return;
+    }
+    getLikedMusics()
+      .then((liked) => setLikedMap(new Map(liked.map((l) => [l.trackId, l.likedMusicId]))))
+      .catch(() => {});
+  }, [isAuthenticated]);
+
   const handleFile = (file: File | undefined) => {
     if (!file) return;
     const url = URL.createObjectURL(file);
@@ -58,6 +73,33 @@ export default function Upload() {
     addTrack(track);
     setQuery("");
     setSearchResults([]);
+  };
+
+  const handleToggleLike = async (track: ItunesTrack) => {
+    setLikeBusy((prev) => new Set(prev).add(track.trackId));
+    try {
+      const existingLikedId = likedMap.get(track.trackId);
+      if (existingLikedId) {
+        await unlikeMusic(existingLikedId);
+        setLikedMap((prev) => {
+          const next = new Map(prev);
+          next.delete(track.trackId);
+          return next;
+        });
+      } else {
+        await likeMusic(track);
+        const liked = await getLikedMusics();
+        setLikedMap(new Map(liked.map((l) => [l.trackId, l.likedMusicId])));
+      }
+    } catch {
+      setSearchError("Couldn't update like. Try again.");
+    } finally {
+      setLikeBusy((prev) => {
+        const next = new Set(prev);
+        next.delete(track.trackId);
+        return next;
+      });
+    }
   };
 
   const canContinue = !!photoPreview && interests.length > 0;
@@ -119,64 +161,110 @@ export default function Upload() {
         <motion.div initial="hidden" animate="show" custom={0.1} variants={fadeUp}>
           <SectionLabel step={2} title="Search your music taste" optional />
           <GlassCard className="p-5">
-            <div className="relative">
-              <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/35" />
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search a song or artist..."
-                className="w-full rounded-xl border border-white/10 bg-white/[0.03] py-2.5 pl-10 pr-9 text-sm text-white placeholder:text-white/35 outline-none focus:border-aura-400/50"
-              />
-              {searching && (
-                <Loader2 size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 animate-spin text-white/35" />
-              )}
-            </div>
-
-            {searchError && <p className="mt-2 text-xs text-rose-400">{searchError}</p>}
-
-            {searchResults.length > 0 && (
-              <div className="mt-3 max-h-56 space-y-1 overflow-y-auto">
-                {searchResults.map((track) => (
-                  <button
-                    key={track.trackViewUrl}
-                    onClick={() => handleAddTrack(track)}
-                    className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition-colors hover:bg-white/5"
-                  >
-                    <img
-                      src={track.artworkUrl100}
-                      alt=""
-                      className="h-10 w-10 flex-shrink-0 rounded-lg object-cover bg-white/5"
+            {!isAuthenticated ? (
+              <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-4">
+                <span className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-full bg-white/5 text-white/40">
+                  <Lock size={15} />
+                </span>
+                <span className="flex-1 text-sm text-white/55">
+                  Log in to search, like, and save songs to playlists.
+                </span>
+                <Link
+                  to="/login"
+                  className="flex-shrink-0 rounded-full border border-white/15 px-3 py-1.5 text-xs font-medium text-white/80 hover:text-white hover:border-white/30"
+                >
+                  Log in
+                </Link>
+              </div>
+            ) : (
+              <>
+                <div className="relative">
+                  <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/35" />
+                  <input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search a song or artist..."
+                    className="w-full rounded-xl border border-white/10 bg-white/[0.03] py-2.5 pl-10 pr-9 text-sm text-white placeholder:text-white/35 outline-none focus:border-aura-400/50"
+                  />
+                  {searching && (
+                    <Loader2
+                      size={15}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 animate-spin text-white/35"
                     />
-                    <span className="flex-1 overflow-hidden">
-                      <span className="block truncate text-sm text-white/90">{track.trackName}</span>
-                      <span className="block truncate text-xs text-white/45">{track.artistName}</span>
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
+                  )}
+                </div>
 
-            {selectedTracks.length > 0 && (
-              <div className="mt-4 flex flex-wrap gap-2 border-t border-white/5 pt-4">
-                {selectedTracks.map((track) => (
-                  <span
-                    key={track.trackViewUrl}
-                    className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 pl-1 pr-2 py-1"
-                  >
-                    <img src={track.artworkUrl100} alt="" className="h-6 w-6 rounded-full object-cover" />
-                    <span className="max-w-[120px] truncate text-xs text-white/80">{track.trackName}</span>
-                    <button onClick={() => removeTrack(track.trackViewUrl)} className="text-white/35 hover:text-white">
-                      <X size={12} />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
+                {searchError && <p className="mt-2 text-xs text-rose-400">{searchError}</p>}
 
-            {selectedTracks.length === 0 && searchResults.length === 0 && !query && (
-              <p className="mt-3 text-xs text-white/35">
-                Powered by iTunes — search lets us match real artists to your vibe.
-              </p>
+                {searchResults.length > 0 && (
+                  <div className="mt-3 max-h-64 space-y-1 overflow-y-auto">
+                    {searchResults.map((track) => {
+                      const liked = likedMap.has(track.trackId);
+                      const busy = likeBusy.has(track.trackId);
+                      return (
+                        <div key={track.trackId} className="flex items-center gap-1 rounded-xl pr-1 hover:bg-white/5">
+                          <button
+                            onClick={() => handleAddTrack(track)}
+                            className="flex flex-1 items-center gap-3 rounded-xl px-2 py-2 text-left"
+                          >
+                            <img
+                              src={track.artworkUrl100 ?? undefined}
+                              alt=""
+                              className="h-10 w-10 flex-shrink-0 rounded-lg bg-white/5 object-cover"
+                            />
+                            <span className="flex-1 overflow-hidden">
+                              <span className="block truncate text-sm text-white/90">{track.trackName}</span>
+                              <span className="block truncate text-xs text-white/45">{track.artistName}</span>
+                            </span>
+                          </button>
+                          <button
+                            onClick={() => handleToggleLike(track)}
+                            disabled={busy}
+                            className="flex-shrink-0 rounded-full p-2 text-white/35 transition-colors hover:text-pink-glow disabled:opacity-50"
+                          >
+                            <Heart size={16} className={liked ? "fill-pink-glow text-pink-glow" : ""} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {selectedTracks.length > 0 && (
+                  <div className="mt-4 flex flex-wrap gap-2 border-t border-white/5 pt-4">
+                    {selectedTracks.map((track) => (
+                      <span
+                        key={track.trackId}
+                        className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 py-1 pl-1 pr-2"
+                      >
+                        <img
+                          src={track.artworkUrl100 ?? undefined}
+                          alt=""
+                          className="h-6 w-6 rounded-full object-cover"
+                        />
+                        <span className="max-w-[120px] truncate text-xs text-white/80">{track.trackName}</span>
+                        <button onClick={() => removeTrack(track.trackId)} className="text-white/35 hover:text-white">
+                          <X size={12} />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {selectedTracks.length === 0 && searchResults.length === 0 && !query && (
+                  <p className="mt-3 text-xs text-white/35">
+                    Powered by iTunes — search lets us match real artists to your vibe.
+                  </p>
+                )}
+
+                <Link
+                  to="/library"
+                  className="mt-4 inline-flex items-center gap-1.5 text-xs text-white/40 hover:text-aura-300"
+                >
+                  <Library size={12} />
+                  View liked songs & playlists
+                </Link>
+              </>
             )}
           </GlassCard>
         </motion.div>
@@ -188,11 +276,7 @@ export default function Upload() {
             <p className="mb-4 text-xs text-white/45">Games, genres, aesthetics — anything that's you.</p>
             <div className="flex flex-wrap gap-2">
               {INTEREST_TAGS.map((tag) => (
-                <Chip
-                  key={tag.id}
-                  selected={interests.includes(tag.id)}
-                  onClick={() => toggleInterest(tag.id)}
-                >
+                <Chip key={tag.id} selected={interests.includes(tag.id)} onClick={() => toggleInterest(tag.id)}>
                   {tag.label}
                 </Chip>
               ))}

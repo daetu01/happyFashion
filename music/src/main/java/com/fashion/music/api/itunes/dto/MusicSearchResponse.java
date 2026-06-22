@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import java.time.LocalDateTime;
 
 public record MusicSearchResponse (
+    Long trackId,
     String trackName,
     String artistName,
     String collectionName,

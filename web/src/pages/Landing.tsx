@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
-import { Sparkles, ArrowRight, Star, LogOut } from "lucide-react";
+import { Sparkles, ArrowRight, Star, LogOut, Library } from "lucide-react";
 import Logo from "../components/Logo";
 import Button from "../components/Button";
 import GlassCard from "../components/GlassCard";
@@ -42,7 +42,14 @@ export default function Landing() {
           </a>
           {isAuthenticated ? (
             <div className="flex items-center gap-3">
-              <span className="text-sm text-white/70">{user?.email}</span>
+              <Link
+                to="/library"
+                className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-sm text-white/70 hover:text-white hover:border-white/25 transition-colors"
+              >
+                <Library size={14} />
+                Library
+              </Link>
+              <span className="hidden text-sm text-white/70 sm:inline">{user?.email}</span>
               <button
                 onClick={logout}
                 className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-sm text-white/70 hover:text-white hover:border-white/25 transition-colors"

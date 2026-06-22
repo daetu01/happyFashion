@@ -1,5 +1,6 @@
 package com.fashion.music.global.security.jwt;
 
+import com.fashion.music.global.security.CustomDetails;
 import com.fashion.music.user.domain.User;
 import com.fashion.music.user.repository.UserRepository;
 import jakarta.servlet.FilterChain;
@@ -37,11 +38,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     .orElse(null);
 
             if (user != null) {
+                CustomDetails userDetails = new CustomDetails(user);
+
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(
-                                String.valueOf(user.getId()),
+                                userDetails,
                                 null,
-                                List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()))
+                                userDetails.getAuthorities()
                         );
 
                 SecurityContextHolder.getContext().setAuthentication(authentication);

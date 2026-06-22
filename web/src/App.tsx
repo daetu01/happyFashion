@@ -10,6 +10,8 @@ import Results from "./pages/Results";
 import Share from "./pages/Share";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import Library from "./pages/Library";
+import PlaylistDetail from "./pages/PlaylistDetail";
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -31,6 +33,8 @@ function AnimatedRoutes() {
           <Route path="/share" element={<Share />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/library" element={<Library />} />
+          <Route path="/library/playlists/:playlistId" element={<PlaylistDetail />} />
         </Routes>
       </motion.div>
     </AnimatePresence>
