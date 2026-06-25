@@ -7,6 +7,10 @@ import com.fashion.music.api.itunes.dto.*;
 import com.fashion.music.api.itunes.repository.MusicRepository;
 import com.fashion.music.api.itunes.repository.PlaylistMusicRepository;
 import com.fashion.music.api.itunes.repository.PlaylistRepository;
+import com.fashion.music.global.exception.CustomException;
+import com.fashion.music.global.exception.ErrorCode;
+import com.fashion.music.mood.domain.Mood;
+import com.fashion.music.mood.service.MoodAnalyzer;
 import com.fashion.music.user.domain.User;
 import com.fashion.music.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -23,11 +27,12 @@ public class PlaylistService {
     private final MusicRepository musicRepository;
     private final PlaylistRepository playlistRepository;
     private final PlaylistMusicRepository playlistMusicRepository;
+    private final MoodAnalyzer moodAnalyzer;
 
     @Transactional
     public void createPlaylist(Long userId, CreatePlaylistRequest request) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
         Playlist playlist = new Playlist(request.name(), user);
 
@@ -47,7 +52,7 @@ public class PlaylistService {
     @Transactional(readOnly = true)
     public PlaylistDetailResponse getPlaylistDetail(Long userId, Long playlistId) {
         Playlist playlist = playlistRepository.findByIdAndUserId(playlistId, userId)
-                .orElseThrow(() -> new IllegalArgumentException("플레이리스트를 찾을 수 없습니다."));
+                .orElseThrow(() -> new CustomException(ErrorCode.PLAYLIST_MUSIC_NOT_FOUND));
 
         List<PlaylistMusicResponse> musics = playlistMusicRepository.findAllByPlaylistId(playlistId)
                 .stream()
@@ -66,6 +71,11 @@ public class PlaylistService {
                             .trackViewUrl(music.getTrackViewUrl())
                             .primaryGenreName(music.getPrimaryGenreName())
                             .releaseDate(music.getReleaseDate())
+                            .moods(moodAnalyzer.analyze(
+                                    music.getPrimaryGenreName(),
+                                    music.getTrackName(),
+                                    music.getArtistName()
+                            ))
                             .build();
                 })
                 .toList();
@@ -84,7 +94,7 @@ public class PlaylistService {
             AddMusicToPlaylistRequest request
     ) {
         Playlist playlist = playlistRepository.findByIdAndUserId(playlistId, userId)
-                .orElseThrow(() -> new IllegalArgumentException("플레이리스트를 찾을 수 없습니다."));
+                .orElseThrow(() -> new CustomException(ErrorCode.PLAYLIST_MUSIC_NOT_FOUND));
 
         Music music = musicRepository.findByExternalTrackId(request.trackId())
                 .orElseGet(() -> musicRepository.save(Music.builder()
@@ -100,8 +110,16 @@ public class PlaylistService {
                         .build()));
 
         if (playlistMusicRepository.existsByPlaylistIdAndMusicId(playlistId, music.getId())) {
-            throw new IllegalArgumentException("이미 플레이리스트에 추가된 곡입니다.");
+            throw new CustomException(ErrorCode.MUSIC_ALREADY_IN_PLAYLIST);
         }
+
+        List<Mood> moods = moodAnalyzer.analyze(
+                request.primaryGenreName(),
+                request.trackName(),
+                request.artistName()
+        );
+
+        moods.forEach(music::addMood);
 
         playlistMusicRepository.save(new PlaylistMusic(playlist, music));
     }
@@ -113,13 +131,13 @@ public class PlaylistService {
             Long playlistMusicId
     ) {
         playlistRepository.findByIdAndUserId(playlistId, userId)
-                .orElseThrow(() -> new IllegalArgumentException("플레이리스트를 찾을 수 없습니다."));
+                .orElseThrow(() -> new CustomException(ErrorCode.PLAYLIST_MUSIC_NOT_FOUND));
 
         PlaylistMusic playlistMusic = playlistMusicRepository.findByIdAndPlaylistId(
                         playlistMusicId,
                         playlistId
                 )
-                .orElseThrow(() -> new IllegalArgumentException("플레이리스트 음악을 찾을 수 없습니다."));
+                .orElseThrow(() -> new CustomException(ErrorCode.PLAYLIST_MUSIC_NOT_FOUND));
 
         playlistMusicRepository.delete(playlistMusic);
     }
@@ -127,7 +145,7 @@ public class PlaylistService {
     @Transactional
     public void deletePlaylist(Long userId, Long playlistId) {
         Playlist playlist = playlistRepository.findByIdAndUserId(playlistId, userId)
-                .orElseThrow(() -> new IllegalArgumentException("플레이리스트를 찾을 수 없습니다."));
+                .orElseThrow(() -> new CustomException(ErrorCode.PLAYLIST_NOT_FOUND));
 
         playlistRepository.delete(playlist);
     }

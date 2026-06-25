@@ -3,6 +3,7 @@ package com.fashion.music.api.itunes.domain;
 import com.fashion.music.user.domain.User;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
@@ -10,6 +11,7 @@ import java.time.LocalDateTime;
 @Entity
 @NoArgsConstructor
 @AllArgsConstructor
+@Getter
 public class ItunesSearchHistory {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

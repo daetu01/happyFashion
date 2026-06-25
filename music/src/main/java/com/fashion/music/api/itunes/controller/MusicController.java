@@ -4,6 +4,7 @@ import com.fashion.music.api.itunes.ItunesApiClient;
 import com.fashion.music.api.itunes.dto.LikeMusicRequest;
 import com.fashion.music.api.itunes.dto.LikedMusicResponse;
 import com.fashion.music.api.itunes.dto.MusicSearchResponse;
+import com.fashion.music.api.itunes.dto.SearchHistoryResponse;
 import com.fashion.music.api.itunes.service.MusicService;
 import com.fashion.music.global.security.CustomDetails;
 import jakarta.validation.Valid;
@@ -56,6 +57,21 @@ public class MusicController {
             @PathVariable @Positive(message = "musicId는 양수여야 합니다.") Long likedMusicId
     ) {
         musicService.unlikeMusic(userDetails.getUserId(), likedMusicId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/search-histories")
+    public ResponseEntity<List<SearchHistoryResponse>> getRecentKeyword() {
+        return ResponseEntity.ok(
+                musicService.getKeywords()
+        );
+    }
+
+    @DeleteMapping("/search-histories/{id}")
+    public ResponseEntity<Void> deleteKeyword(
+            @PathVariable @Positive(message = "history id는 양수여야 합니다.") Long id
+    ) {
+        musicService.deleteKeyword(id);
         return ResponseEntity.noContent().build();
     }
 }

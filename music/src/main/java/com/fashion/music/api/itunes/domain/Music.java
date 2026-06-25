@@ -1,10 +1,15 @@
 package com.fashion.music.api.itunes.domain;
 
+import com.fashion.music.mood.domain.Mood;
+import com.fashion.music.mood.domain.MusicMood;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Getter
@@ -28,6 +33,9 @@ public class Music {
     private String primaryGenreName;
     private String releaseDate;
 
+    @OneToMany(mappedBy = "music", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<MusicMood> moods = new ArrayList<>();
+
     @Builder
     public Music(
             Long externalTrackId,
@@ -49,5 +57,20 @@ public class Music {
         this.trackViewUrl = trackViewUrl;
         this.primaryGenreName = primaryGenreName;
         this.releaseDate = releaseDate;
+    }
+
+    public void addMood(Mood mood) {
+        boolean alreadyExists = moods.stream()
+                .anyMatch(musicMood -> musicMood.getMood() == mood);
+
+        if (!alreadyExists) {
+            moods.add(new MusicMood(this, mood));
+        }
+    }
+
+    public List<Mood> getMoodValues() {
+        return moods.stream()
+                .map(MusicMood::getMood)
+                .toList();
     }
 }

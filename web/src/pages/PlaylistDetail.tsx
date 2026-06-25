@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Search, Loader2, Plus, X, Trash2 } from "lucide-react";
 import PageShell from "../components/PageShell";
 import GlassCard from "../components/GlassCard";
+import TrackDetailModal from "../components/TrackDetailModal";
 import { useAuth } from "../lib/AuthContext";
 import { searchMusic, type ItunesTrack } from "../lib/musicApi";
 import {
@@ -34,6 +35,7 @@ export default function PlaylistDetail() {
   const [searchResults, setSearchResults] = useState<ItunesTrack[]>([]);
   const [searching, setSearching] = useState(false);
   const [addingId, setAddingId] = useState<number | null>(null);
+  const [selectedTrack, setSelectedTrack] = useState<ItunesTrack | null>(null);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) navigate("/login", { replace: true });
@@ -149,15 +151,20 @@ export default function PlaylistDetail() {
             <div className="mt-3 max-h-56 space-y-1 overflow-y-auto">
               {searchResults.map((track) => (
                 <div key={track.trackId} className="flex items-center gap-2 rounded-xl px-2 py-2 hover:bg-white/5">
-                  <img
-                    src={track.artworkUrl100 ?? undefined}
-                    alt=""
-                    className="h-10 w-10 flex-shrink-0 rounded-lg bg-white/5 object-cover"
-                  />
-                  <span className="flex-1 overflow-hidden">
-                    <span className="block truncate text-sm text-white/90">{track.trackName}</span>
-                    <span className="block truncate text-xs text-white/45">{track.artistName}</span>
-                  </span>
+                  <button
+                    onClick={() => setSelectedTrack(track)}
+                    className="flex flex-1 items-center gap-2 overflow-hidden text-left"
+                  >
+                    <img
+                      src={track.artworkUrl100 ?? undefined}
+                      alt=""
+                      className="h-10 w-10 flex-shrink-0 rounded-lg bg-white/5 object-cover"
+                    />
+                    <span className="flex-1 overflow-hidden">
+                      <span className="block truncate text-sm text-white/90">{track.trackName}</span>
+                      <span className="block truncate text-xs text-white/45">{track.artistName}</span>
+                    </span>
+                  </button>
                   <button
                     onClick={() => handleAdd(track)}
                     disabled={addingId === track.trackId}
@@ -194,15 +201,20 @@ export default function PlaylistDetail() {
                 key={track.playlistMusicId}
                 className="flex items-center gap-2 rounded-xl px-2 py-2 hover:bg-white/5"
               >
-                <img
-                  src={track.artworkUrl100 ?? undefined}
-                  alt=""
-                  className="h-11 w-11 flex-shrink-0 rounded-lg bg-white/5 object-cover"
-                />
-                <span className="flex-1 overflow-hidden">
-                  <span className="block truncate text-sm text-white/90">{track.trackName}</span>
-                  <span className="block truncate text-xs text-white/45">{track.artistName}</span>
-                </span>
+                <button
+                  onClick={() => setSelectedTrack(track)}
+                  className="flex flex-1 items-center gap-2 overflow-hidden text-left"
+                >
+                  <img
+                    src={track.artworkUrl100 ?? undefined}
+                    alt=""
+                    className="h-11 w-11 flex-shrink-0 rounded-lg bg-white/5 object-cover"
+                  />
+                  <span className="flex-1 overflow-hidden">
+                    <span className="block truncate text-sm text-white/90">{track.trackName}</span>
+                    <span className="block truncate text-xs text-white/45">{track.artistName}</span>
+                  </span>
+                </button>
                 <button
                   onClick={() => handleRemove(track.playlistMusicId)}
                   className="flex-shrink-0 rounded-full p-2 text-white/35 hover:text-rose-400"
@@ -214,6 +226,8 @@ export default function PlaylistDetail() {
           </div>
         </GlassCard>
       </motion.div>
+
+      <TrackDetailModal track={selectedTrack} onClose={() => setSelectedTrack(null)} />
     </PageShell>
   );
 }

@@ -4,13 +4,14 @@ import com.fashion.music.api.itunes.ItunesApiClient;
 import com.fashion.music.api.itunes.domain.ItunesSearchHistory;
 import com.fashion.music.api.itunes.domain.LikedMusic;
 import com.fashion.music.api.itunes.domain.Music;
-import com.fashion.music.api.itunes.dto.ItunesSearchResponse;
-import com.fashion.music.api.itunes.dto.LikeMusicRequest;
-import com.fashion.music.api.itunes.dto.LikedMusicResponse;
-import com.fashion.music.api.itunes.dto.MusicSearchResponse;
+import com.fashion.music.api.itunes.dto.*;
 import com.fashion.music.api.itunes.repository.LikedMusicRepository;
 import com.fashion.music.api.itunes.repository.MusicRepository;
 import com.fashion.music.api.itunes.repository.SearchHistoryRepository;
+import com.fashion.music.global.exception.CustomException;
+import com.fashion.music.global.exception.ErrorCode;
+import com.fashion.music.mood.domain.Mood;
+import com.fashion.music.mood.service.MoodAnalyzer;
 import com.fashion.music.user.domain.User;
 import com.fashion.music.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -29,11 +31,12 @@ public class MusicService {
     private final MusicRepository musicRepository;
     private final LikedMusicRepository likedMusicRepository;
     private final ItunesApiClient itunesApiClient;
+    private final MoodAnalyzer moodAnalyzer;
 
     @Transactional
     public List<MusicSearchResponse> search(String keyword, Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
         searchHistoryRepository.save(new ItunesSearchHistory(keyword, user));
 
@@ -49,7 +52,12 @@ public class MusicService {
                         track.previewUrl(),
                         track.trackViewUrl(),
                         track.primaryGenreName(),
-                        track.releaseDate()
+                        track.releaseDate(),
+                        moodAnalyzer.analyze(
+                                track.primaryGenreName(),
+                                track.trackName(),
+                                track.artistName()
+                        )
                 ))
                 .toList();
     }
@@ -65,7 +73,7 @@ public class MusicService {
     @Transactional
     public void likeMusic(LikeMusicRequest request, Long userId) {
 
-        User user = userRepository.findById(userId).orElseThrow(() -> new UsernameNotFoundException("사용자를 찾을 수 없습니다."));
+        User user = userRepository.findById(userId).orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
         Music music = musicRepository.findByExternalTrackId(request.trackId())
                 .orElseGet(() -> musicRepository.save(Music.builder()
@@ -81,8 +89,16 @@ public class MusicService {
                         .build()));
 
         if (likedMusicRepository.existsByUserIdAndMusicId(userId, music.getId())) {
-            throw new IllegalArgumentException("이미 좋아요한 곡입니다.");
+            throw new CustomException(ErrorCode.MUSIC_ALREADY_LIKED);
         }
+
+        List<Mood> moods = moodAnalyzer.analyze(
+                request.primaryGenreName(),
+                request.trackName(),
+                request.artistName()
+        );
+
+        moods.forEach(music::addMood);
 
         likedMusicRepository.save(new LikedMusic(user, music));
     }
@@ -105,6 +121,11 @@ public class MusicService {
                             .trackViewUrl(music.getTrackViewUrl())
                             .primaryGenreName(music.getPrimaryGenreName())
                             .releaseDate(music.getReleaseDate())
+                            .moods(moodAnalyzer.analyze(
+                                    music.getPrimaryGenreName(),
+                                    music.getTrackName(),
+                                    music.getArtistName()
+                            ))
                             .build();
                 })
                 .toList();
@@ -113,11 +134,32 @@ public class MusicService {
     @Transactional
     public void unlikeMusic(Long userId, Long likedMusicId) {
         LikedMusic likedMusic = likedMusicRepository.findByIdAndUserId(likedMusicId, userId)
-                .orElseThrow(() -> new IllegalArgumentException("좋아요한 음악을 찾을 수 없습니다."));
+                .orElseThrow(() -> new CustomException(ErrorCode.LIKED_MUSIC_NOT_FOUND));
 
         if (!userId.equals(likedMusic.getUser().getId())) {
-            throw new IllegalArgumentException("일치하지 않는 사용자입니다.");
+            throw new CustomException(ErrorCode.FORBIDDEN);
         }
         likedMusicRepository.delete(likedMusic);
+    }
+
+
+    public List<SearchHistoryResponse> getKeywords() {
+        return searchHistoryRepository.findAllByOrderBySearchedAtDesc()
+                .stream()
+                .map(itunesSearchHistory -> SearchHistoryResponse
+                        .builder()
+                        .id(itunesSearchHistory.getId())
+                        .keyword(itunesSearchHistory.getKeyword())
+                        .build())
+                .toList();
+    }
+
+    public void deleteKeyword(Long id) {
+        ItunesSearchHistory history = searchHistoryRepository.findById(id)
+                        .orElseThrow(() -> new CustomException(ErrorCode.HISTORY_NOT_FOUND));
+
+
+
+        searchHistoryRepository.delete(history);
     }
 }

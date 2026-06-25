@@ -1,6 +1,9 @@
 package com.fashion.music.api.itunes.dto;
 
+import com.fashion.music.mood.domain.Mood;
 import lombok.Builder;
+
+import java.util.List;
 
 @Builder
 public record PlaylistMusicResponse(
@@ -15,6 +18,7 @@ public record PlaylistMusicResponse(
         String previewUrl,
         String trackViewUrl,
         String primaryGenreName,
-        String releaseDate
+        String releaseDate,
+        List<Mood> moods
 ) {
 }

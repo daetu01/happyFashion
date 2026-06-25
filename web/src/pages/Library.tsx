@@ -5,6 +5,7 @@ import { Heart, ChevronRight, Plus, Loader2, ListMusic } from "lucide-react";
 import PageShell from "../components/PageShell";
 import GlassCard from "../components/GlassCard";
 import AddToPlaylistMenu from "../components/AddToPlaylistMenu";
+import TrackDetailModal from "../components/TrackDetailModal";
 import { useAuth } from "../lib/AuthContext";
 import { getLikedMusics, unlikeMusic, type LikedMusic } from "../lib/musicApi";
 import { createPlaylist, getMyPlaylists, type Playlist } from "../lib/playlistApi";
@@ -24,6 +25,7 @@ export default function Library() {
   const [newName, setNewName] = useState("");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedTrack, setSelectedTrack] = useState<LikedMusic | null>(null);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) navigate("/login", { replace: true });
@@ -89,15 +91,20 @@ export default function Library() {
           <div className="space-y-1">
             {liked?.map((track) => (
               <div key={track.likedMusicId} className="flex items-center gap-2 rounded-xl px-2 py-2 hover:bg-white/5">
-                <img
-                  src={track.artworkUrl100 ?? undefined}
-                  alt=""
-                  className="h-11 w-11 flex-shrink-0 rounded-lg bg-white/5 object-cover"
-                />
-                <span className="flex-1 overflow-hidden">
-                  <span className="block truncate text-sm text-white/90">{track.trackName}</span>
-                  <span className="block truncate text-xs text-white/45">{track.artistName}</span>
-                </span>
+                <button
+                  onClick={() => setSelectedTrack(track)}
+                  className="flex flex-1 items-center gap-2 overflow-hidden text-left"
+                >
+                  <img
+                    src={track.artworkUrl100 ?? undefined}
+                    alt=""
+                    className="h-11 w-11 flex-shrink-0 rounded-lg bg-white/5 object-cover"
+                  />
+                  <span className="flex-1 overflow-hidden">
+                    <span className="block truncate text-sm text-white/90">{track.trackName}</span>
+                    <span className="block truncate text-xs text-white/45">{track.artistName}</span>
+                  </span>
+                </button>
                 <AddToPlaylistMenu track={track} />
                 <button
                   onClick={() => handleUnlike(track.likedMusicId)}
@@ -157,6 +164,8 @@ export default function Library() {
           </div>
         </GlassCard>
       </motion.div>
+
+      <TrackDetailModal track={selectedTrack} onClose={() => setSelectedTrack(null)} />
     </PageShell>
   );
 }

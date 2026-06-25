@@ -1,5 +1,7 @@
 package com.fashion.music.api.auth;
 
+import com.fashion.music.global.exception.CustomException;
+import com.fashion.music.global.exception.ErrorCode;
 import com.fashion.music.global.security.jwt.JwtProvider;
 import com.fashion.music.user.domain.User;
 import com.fashion.music.user.dto.LoginRequest;
@@ -30,7 +32,7 @@ public class AuthService {
     @Transactional
     public void signup(SignupRequest request) {
         if (userRepository.existsByEmail(request.email())) {
-            throw new IllegalArgumentException("이미 가입된 이메일입니다.");
+            throw new CustomException(ErrorCode.USER_ALREADY_EXISTS);
         }
 
         String encodedPassword = passwordEncoder.encode(request.password());
@@ -47,10 +49,10 @@ public class AuthService {
     @Transactional(readOnly = true)
     public LoginResponse login(LoginRequest request) {
         User user = userRepository.findByEmail(request.email())
-                .orElseThrow(() -> new IllegalArgumentException("이메일 또는 비밀번호가 올바르지 않습니다."));
+                .orElseThrow(() -> new CustomException(ErrorCode.INVALID_LOGIN));
 
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
-            throw new IllegalArgumentException("이메일 또는 비밀번호가 올바르지 않습니다.");
+            throw new CustomException(ErrorCode.INVALID_LOGIN);
         }
 
         String accessToken = jwtProvider.createAccessToken(user);
